@@ -1,0 +1,162 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cstdlib>
+#include <chrono>
+using namespace std;
+
+void metodoInsercion(int lista[], int cantidad) {
+    for (int indice = 1; indice < cantidad; indice++) {
+        int temporal = lista[indice];
+        int posicion = indice - 1;
+        while (posicion >= 0 && lista[posicion] > temporal) {
+            lista[posicion + 1] = lista[posicion];
+            posicion--;
+        }
+        lista[posicion + 1] = temporal;
+    }
+}
+
+void metodoBurbuja(int lista[], int cantidad) {
+    for (int paso = 0; paso < cantidad - 1; paso++) {
+        for (int indice = 0; indice < cantidad - paso - 1; indice++) {
+            if (lista[indice] > lista[indice + 1]) {
+                swap(lista[indice], lista[indice + 1]);
+            }
+        }
+    }
+}
+
+void metodoSeleccion(int lista[], int cantidad) {
+    for (int indice = 0; indice < cantidad - 1; indice++) {
+        int minimoIndice = indice;
+        for (int j = indice + 1; j < cantidad; j++) {
+            if (lista[j] < lista[minimoIndice]) {
+                minimoIndice = j;
+            }
+        }
+        if (minimoIndice != indice) {
+            swap(lista[indice], lista[minimoIndice]);
+        }
+    }
+}
+
+void metodoShell(int lista[], int cantidad) {
+    for (int intervalo = cantidad / 2; intervalo > 0; intervalo /= 2) {
+        for (int indice = intervalo; indice < cantidad; indice++) {
+            int auxiliar = lista[indice];
+            int posicion;
+            for (posicion = indice; posicion >= intervalo && lista[posicion - intervalo] > auxiliar; posicion -= intervalo) {
+                lista[posicion] = lista[posicion - intervalo];
+            }
+            lista[posicion] = auxiliar;
+        }
+    }
+}
+
+void combinar(int lista[], int inicio, int mitad, int fin) {
+    int tamIzq = mitad - inicio + 1;
+    int tamDer = fin - mitad;
+    vector<int> izquierda(tamIzq), derecha(tamDer);
+
+    for (int i = 0; i < tamIzq; i++) izquierda[i] = lista[inicio + i];
+    for (int j = 0; j < tamDer; j++) derecha[j] = lista[mitad + 1 + j];
+
+    int i = 0, j = 0, k = inicio;
+    while (i < tamIzq && j < tamDer) {
+        lista[k++] = (izquierda[i] <= derecha[j]) ? izquierda[i++] : derecha[j++];
+    }
+    while (i < tamIzq) lista[k++] = izquierda[i++];
+    while (j < tamDer) lista[k++] = derecha[j++];
+}
+
+void metodoMerge(int lista[], int inicio, int fin) {
+    if (inicio < fin) {
+        int mitad = inicio + (fin - inicio) / 2;
+        metodoMerge(lista, inicio, mitad);
+        metodoMerge(lista, mitad + 1, fin);
+        combinar(lista, inicio, mitad, fin);
+    }
+}
+
+void metodoMergeWrapper(int lista[], int cantidad) {
+    metodoMerge(lista, 0, cantidad - 1);
+}
+
+int dividir(int lista[], int bajo, int alto) {
+    int pivote = lista[alto];
+    int indice = bajo - 1;
+    for (int j = bajo; j < alto; j++) {
+        if (lista[j] <= pivote) {
+            swap(lista[++indice], lista[j]);
+        }
+    }
+    swap(lista[indice + 1], lista[alto]);
+    return indice + 1;
+}
+
+void metodoRapido(int lista[], int bajo, int alto) {
+    if (bajo < alto) {
+        int pivote = dividir(lista, bajo, alto);
+        metodoRapido(lista, bajo, pivote - 1);
+        metodoRapido(lista, pivote + 1, alto);
+    }
+}
+
+void metodoRapidoWrapper(int lista[], int cantidad) {
+    metodoRapido(lista, 0, cantidad - 1);
+}
+
+void ajustarHeap(int lista[], int cantidad, int indice) {
+    int mayor = indice, izquierda = 2 * indice + 1, derecha = 2 * indice + 2;
+    if (izquierda < cantidad && lista[izquierda] > lista[mayor]) mayor = izquierda;
+    if (derecha < cantidad && lista[derecha] > lista[mayor]) mayor = derecha;
+    if (mayor != indice) {
+        swap(lista[indice], lista[mayor]);
+        ajustarHeap(lista, cantidad, mayor);
+    }
+}
+
+void metodoMonticulo(int lista[], int cantidad) {
+    for (int i = cantidad / 2 - 1; i >= 0; i--) ajustarHeap(lista, cantidad, i);
+    for (int i = cantidad - 1; i > 0; i--) {
+        swap(lista[0], lista[i]);
+        ajustarHeap(lista, i, 0);
+    }
+}
+
+void medirTiempo(void (*algoritmo)(int[], int), const string &archivo) {
+    vector<double> tiempos(1000);
+    srand(time(0));
+
+    for (int i = 0; i < 1000; i++) {
+        int lista[100];
+        for (int j = 0; j < 100; j++) {
+            lista[j] = rand() % 1000 + 1;
+        }
+
+        auto inicio = chrono::high_resolution_clock::now();
+        algoritmo(lista, 100);
+        auto fin = chrono::high_resolution_clock::now();
+
+        tiempos[i] = chrono::duration_cast<chrono::nanoseconds>(fin - inicio).count();
+    }
+
+    ofstream salida(archivo);
+    if (salida.is_open()) {
+        for (double tiempo : tiempos) salida << tiempo << endl;
+        salida.close();
+    }
+}
+
+int main() {
+    medirTiempo(metodoInsercion, "insercion.csv");
+    medirTiempo(metodoBurbuja, "burbuja.csv");
+    medirTiempo(metodoSeleccion, "seleccion.csv");
+    medirTiempo(metodoShell, "shell.csv");
+    medirTiempo(metodoMergeWrapper, "merge.csv");
+    medirTiempo(metodoRapidoWrapper, "rapido.csv");
+    medirTiempo(metodoMonticulo, "monticulo.csv");
+    return 0;
+}
+
